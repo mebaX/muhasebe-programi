@@ -1,92 +1,118 @@
+// src/components/TransactionForm.tsx
 'use client';
 import { useState } from 'react';
 import PersonCombobox from './PersonCombobox';
 
-export default function TransactionForm() {
+export default function TransactionForm({ type }: { type: 'income' | 'expense' }) {
   const [form, setForm] = useState({
-    person: null as { id: number; name: string } | null,
+    personName: '',
+    personId: null as number | null,
     amount: '',
     description: '',
-    type: 'income' as 'income' | 'expense'
+    date: new Date().toISOString().split('T')[0]
   });
 
-  const handleSubmit = async () => {
-    if (!form.person) return alert('Kişi seçiniz');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const response = await fetch('/api/transactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        person_id: form.person.id,
-        amount: parseFloat(form.amount),
-        description: form.description,
-        type: form.type
-      })
-    });
+    if (!form.personName || !form.amount) {
+      alert('Lütfen zorunlu alanları doldurun');
+      return;
+    }
 
-    if (response.ok) {
-      alert('Kaydedildi!');
-      setForm({
-        person: null,
-        amount: '',
-        description: '',
-        type: 'income'
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personName: form.personName,
+          personId: form.personId,
+          amount: parseFloat(form.amount),
+          description: form.description,
+          date: form.date,
+          type
+        })
       });
+
+      if (response.ok) {
+        alert('İşlem başarıyla kaydedildi!');
+        setForm({
+          personName: '',
+          personId: null,
+          amount: '',
+          description: '',
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
+    } catch (error) {
+      console.error('Hata:', error);
+      alert('Kayıt sırasında hata oluştu');
     }
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded">
-      <h2 className="text-xl font-bold">Yeni İşlem</h2>
-      
-      <div>
-        <label className="block mb-1">İşlem Türü</label>
-        <select
-          value={form.type}
-          onChange={(e) => setForm({...form, type: e.target.value as 'income' | 'expense'})}
-          className="p-2 border rounded"
-        >
-          <option value="income">Alacak (Ödeme Alınacak)</option>
-          <option value="expense">Borç (Ödeme Yapılacak)</option>
-        </select>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded bg-white">
+      <h2 className="text-lg font-semibold">
+        {type === 'income' ? 'Yeni Alacak' : 'Yeni Borç'} Ekle
+      </h2>
 
       <div>
-        <label className="block mb-1">
-          {form.type === 'income' ? 'Müşteri' : 'Tedarikçi'}
+        <label className="block mb-1 text-sm font-medium">
+          {type === 'income' ? 'Müşteri' : 'Tedarikçi'} *
         </label>
         <PersonCombobox
-          type={form.type === 'income' ? 'customer' : 'supplier'}
-          onSelect={(person) => setForm({...form, person})}
+          type={type === 'income' ? 'customer' : 'supplier'}
+          value={form.personName}
+          onChange={(value) => setForm({...form, personName: value})}
+          onSelect={(person) => {
+            setForm({
+              ...form,
+              personName: person.name,
+              personId: person.id
+            });
+          }}
         />
       </div>
 
       <div>
-        <label className="block mb-1">Tutar</label>
+        <label className="block mb-1 text-sm font-medium">Tutar (₺) *</label>
         <input
           type="number"
           value={form.amount}
           onChange={(e) => setForm({...form, amount: e.target.value})}
-          className="p-2 border rounded w-full"
+          className="w-full p-2 border rounded"
+          required
         />
       </div>
 
       <div>
-        <label className="block mb-1">Açıklama</label>
+        <label className="block mb-1 text-sm font-medium">Açıklama</label>
         <input
           type="text"
           value={form.description}
           onChange={(e) => setForm({...form, description: e.target.value})}
-          className="p-2 border rounded w-full"
+          className="w-full p-2 border rounded"
+        />
+      </div>
+
+      <div>
+        <label className="block mb-1 text-sm font-medium">Tarih</label>
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm({...form, date: e.target.value})}
+          className="w-full p-2 border rounded"
         />
       </div>
 
       <button
-        onClick={handleSubmit}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        type="submit"
+        className={`w-full px-4 py-2 text-white rounded ${
+          type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+        }`}
       >
-        Kaydet
+        {type === 'income' ? 'Alacak Ekle' : 'Borç Ekle'}
       </button>
-    </div>
+    </form>
   );
 }

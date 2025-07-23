@@ -1,97 +1,141 @@
-'use client';
+import { openDb } from "@/lib/db";
+import DashboardCards from "@/components/DashboardCards";
+import RecentTransactions from "@/components/RecentTransactions";
+import { ArrowUp, ArrowDown } from "lucide-react";
 
-import { db } from '@/lib/local-db';
+// src/app/dashboard/page.tsx
+export default async function DashboardPage() {
+  const db = await openDb();
 
-export default function Dashboard() {
-  const gelirler = db.getGelirler();
-  const giderler = db.getGiderler();
-  const satislar = db.getSatislar(); // Artık bu fonksiyon tanımlı
+  // Gelir ve satışları birleştirerek toplam geliri hesapla
+  const [income, expense, totalSales] = await Promise.all([
+    db.get(
+      'SELECT SUM(amount) as total FROM transactions WHERE type = "income"'
+    ),
+    db.get(
+      'SELECT SUM(amount) as total FROM transactions WHERE type = "expense"'
+    ),
+    db.get("SELECT SUM(amount) as total FROM sales"),
+  ]);
 
-  const toplamGelir = gelirler.reduce((sum, gelir) => sum + gelir.miktar, 0);
-  const toplamGider = giderler.reduce((sum, gider) => sum + gider.miktar, 0);
-  const netKar = toplamGelir - toplamGider;
-  const toplamSatis = satislar.reduce((sum, satis) => sum + (satis.miktar * satis.birimFiyat), 0);
+  const totalIncome = (income?.total || 0) + (totalSales?.total || 0);
+
+  // Son 5 gelir ve satışı birleştir
+  const recentIncome = await db.all(`
+    SELECT 
+      id, 
+      amount, 
+      description as title, 
+      date,
+      'transaction' as type
+    FROM transactions 
+    WHERE type = 'income'
+    ORDER BY date DESC 
+    LIMIT 5
+  `);
+
+  const recentExpenses = await db.all(`
+  SELECT 
+    id, 
+    amount, 
+    description as title, 
+    date,
+    'expense' as type
+  FROM transactions 
+  WHERE type = 'expense'
+  ORDER BY date DESC 
+  LIMIT 5
+`);
+
+  const recentSales = await db.all(`
+    SELECT 
+      id, 
+      amount, 
+      product_name as title, 
+      sale_date as date,
+      'sale' as type
+    FROM sales 
+    ORDER BY sale_date DESC 
+    LIMIT 5
+  `);
+
+  // Gelir ve satışları birleştir, tarihe göre sırala
+  const recentTransactions = [
+    ...recentIncome,
+    ...recentSales,
+    ...recentExpenses,
+  ]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5); // sadece son 5 işlem
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Genel Bakış</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="text-gray-500">Toplam Gelir</h3>
-          <p className="text-2xl font-bold text-green-600">{toplamGelir.toFixed(2)} ₺</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="text-gray-500">Toplam Gider</h3>
-          <p className="text-2xl font-bold text-red-600">{toplamGider.toFixed(2)} ₺</p>
-        </div>
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="text-gray-500">Net Kar</h3>
-          <p className={`text-2xl font-bold ${
-            netKar >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {netKar.toFixed(2)} ₺
+    <div className="container mx-auto p-4 space-y-8">
+      <h1 className="text-2xl font-bold">Genel Bakış</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Gelir Kartı (Artık satışları da içeriyor) */}
+        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+          <h3 className="text-sm font-medium text-gray-500">Toplam Gelir</h3>
+          <div className="flex items-center mt-2">
+            <ArrowUp className="text-green-500 mr-2" />
+            <span className="text-2xl font-bold">
+              {totalIncome.toFixed(2)} ₺
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            (İşlemler: {(income?.total || 0).toFixed(2)} ₺ + Satışlar:{" "}
+            {(totalSales?.total || 0).toFixed(2)} ₺)
           </p>
         </div>
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="text-gray-500">Toplam Satış</h3>
-          <p className="text-2xl font-bold text-blue-600">{toplamSatis.toFixed(2)} ₺</p>
+
+        {/* Gider Kartı */}
+        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+          <h3 className="text-sm font-medium text-gray-500">Toplam Gider</h3>
+          <div className="flex items-center mt-2">
+            <ArrowDown className="text-red-500 mr-2" />
+            <span className="text-2xl font-bold">
+              {(expense?.total || 0).toFixed(2)} ₺
+            </span>
+          </div>
+        </div>
+
+        {/* Net Kar Kartı */}
+        <div
+          className={`bg-white p-4 rounded-lg shadow border-l-4 ${
+            (income?.total || 0) - (expense?.total || 0) >= 0
+              ? "border-green-500"
+              : "border-red-500"
+          }`}
+        >
+          <h3 className="text-sm font-medium text-gray-500">Net Kar</h3>
+          <div className="flex items-center mt-2">
+            {(income?.total || 0) - (expense?.total || 0) >= 0 ? (
+              <ArrowUp className="text-green-500 mr-2" />
+            ) : (
+              <ArrowDown className="text-red-500 mr-2" />
+            )}
+            <span
+              className={`text-2xl font-bold ${
+                (income?.total || 0) - (expense?.total || 0) >= 0
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {((income?.total || 0) - (expense?.total || 0)).toFixed(2)} ₺
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="font-bold mb-2">Son Gelirler</h3>
-          <ul className="space-y-2">
-            {gelirler.slice(0, 5).map(gelir => (
-              <li key={gelir.id} className="flex justify-between items-center border-b pb-2">
-                <div>
-                  <span>{gelir.aciklama}</span>
-                  <span className="block text-xs text-gray-500">
-                    {gelir.tarih.toLocaleDateString('tr-TR')}
-                  </span>
-                </div>
-                <span className="text-green-600">+{gelir.miktar.toFixed(2)} ₺</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="font-bold mb-2">Son Giderler</h3>
-          <ul className="space-y-2">
-            {giderler.slice(0, 5).map(gider => (
-              <li key={gider.id} className="flex justify-between items-center border-b pb-2">
-                <div>
-                  <span>{gider.aciklama}</span>
-                  <span className="block text-xs text-gray-500">
-                    {gider.tarih.toLocaleDateString('tr-TR')}
-                  </span>
-                </div>
-                <span className="text-red-600">-{gider.miktar.toFixed(2)} ₺</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        <div className="bg-white p-4 rounded shadow">
-          <h3 className="font-bold mb-2">Son Satışlar</h3>
-          <ul className="space-y-2">
-            {satislar.slice(0, 5).map(satis => (
-              <li key={satis.id} className="flex justify-between items-center border-b pb-2">
-                <div>
-                  <span>{satis.urunAdi}</span>
-                  <span className="block text-xs text-gray-500">
-                    {satis.musteri} - {satis.tarih.toLocaleDateString('tr-TR')}
-                  </span>
-                </div>
-                <span className="text-blue-600">
-                  {(satis.miktar * satis.birimFiyat).toFixed(2)} ₺
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <RecentTransactions
+          transactions={recentTransactions}
+          title="Son Gelirler & Satışlar"
+        />
+        <RecentTransactions
+          transactions={recentTransactions.filter((t) => t.type === "expense")}
+          title="Son Giderler"
+        />
       </div>
     </div>
   );
