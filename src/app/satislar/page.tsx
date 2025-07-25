@@ -1,5 +1,6 @@
 "use client";
 
+import formatNumber from "@/lib/formatNumber";
 import { useState, useEffect } from "react";
 
 export default function Satislar() {
@@ -155,12 +156,10 @@ export default function Satislar() {
                     <td className="p-2">{satis.customer_name}</td>
                     <td className="p-2 text-right">{satis.quantity}</td>
                     <td className="p-2 text-right">
-                      {Number(satis.amount).toFixed(2)} ₺
+                      {formatNumber(Number(satis.amount))} ₺
                     </td>
                     <td className="p-2 text-right text-green-600">
-                      {(Number(satis.quantity) * Number(satis.amount)).toFixed(
-                        2
-                      )}{" "}
+                      {formatNumber((Number(satis.quantity) * Number(satis.amount)))}{" "}
                       ₺
                     </td>
                     <td className="p-2 text-right">

@@ -12,7 +12,8 @@ const transporter = nodemailer.createTransport({
 // Sabit iki e-posta adresi
 const recipients = [
   'pdmproje@gmail.com',
-  'bahamert010@gmail.com'
+  'bahamert010@gmail.com',
+  'farmtektr@gmail.com'
 ];
 
 export async function sendPaymentReminder() {

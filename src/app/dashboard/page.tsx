@@ -1,7 +1,7 @@
 import { openDb } from "@/lib/db";
-import DashboardCards from "@/components/DashboardCards";
 import RecentTransactions from "@/components/RecentTransactions";
 import { ArrowUp, ArrowDown } from "lucide-react";
+import formatNumber from "@/lib/formatNumber";
 
 // src/app/dashboard/page.tsx
 export default async function DashboardPage() {
@@ -79,12 +79,12 @@ export default async function DashboardPage() {
           <div className="flex items-center mt-2">
             <ArrowUp className="text-green-500 mr-2" />
             <span className="text-2xl font-bold">
-              {totalIncome.toFixed(2)} ₺
+              {formatNumber(totalIncome)} ₺
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            (İşlemler: {(income?.total || 0).toFixed(2)} ₺ + Satışlar:{" "}
-            {(totalSales?.total || 0).toFixed(2)} ₺)
+            (İşlemler: {income?.total || 0} ₺ + Satışlar:{" "}
+            {totalSales?.total || 0} ₺)
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export default async function DashboardPage() {
           <div className="flex items-center mt-2">
             <ArrowDown className="text-red-500 mr-2" />
             <span className="text-2xl font-bold">
-              {(expense?.total || 0).toFixed(2)} ₺
+              {formatNumber(expense?.total || 0)} ₺
             </span>
           </div>
         </div>
@@ -102,26 +102,40 @@ export default async function DashboardPage() {
         {/* Net Kar Kartı */}
         <div
           className={`bg-white p-4 rounded-lg shadow border-l-4 ${
-            (income?.total || 0) - (expense?.total || 0) >= 0
+            (income?.total || 0) +
+              (totalSales?.total || 0) -
+              (expense?.total || 0) >=
+            0
               ? "border-green-500"
               : "border-red-500"
           }`}
         >
           <h3 className="text-sm font-medium text-gray-500">Net Kar</h3>
           <div className="flex items-center mt-2">
-            {(income?.total || 0) - (expense?.total || 0) >= 0 ? (
+            {(income?.total || 0) +
+              (totalSales?.total || 0) -
+              (expense?.total || 0) >=
+            0 ? (
               <ArrowUp className="text-green-500 mr-2" />
             ) : (
               <ArrowDown className="text-red-500 mr-2" />
             )}
             <span
               className={`text-2xl font-bold ${
-                (income?.total || 0) - (expense?.total || 0) >= 0
+                (income?.total || 0) +
+                  (totalSales?.total || 0) -
+                  (expense?.total || 0) >=
+                0
                   ? "text-green-600"
                   : "text-red-600"
               }`}
             >
-              {((income?.total || 0) - (expense?.total || 0)).toFixed(2)} ₺
+              {formatNumber(
+                (income?.total || 0) +
+                  (totalSales?.total || 0) -
+                  (expense?.total || 0)
+              )}{" "}
+              ₺
             </span>
           </div>
         </div>
@@ -129,7 +143,9 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <RecentTransactions
-          transactions={recentTransactions}
+          transactions={recentTransactions.filter(
+            (t) => t.type === "transaction" || t.type === "sale"
+          )}
           title="Son Gelirler & Satışlar"
         />
         <RecentTransactions

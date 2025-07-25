@@ -1,4 +1,7 @@
 "use client";
+
+import formatNumber from "@/lib/formatNumber";
+
 import {
   BarChart,
   Bar,
@@ -29,25 +32,46 @@ interface MonthlySummary {
 interface ReportChartsProps {
   incomeData: ChartData[];
   expenseData: ChartData[];
+  salesData?: ChartData[]; // Satış verisi eklendi
   monthlySummary: MonthlySummary[];
 }
 
 export default function ReportCharts({
   incomeData,
   expenseData,
+  salesData = [],
   monthlySummary,
 }: ReportChartsProps) {
-  // Gelir/Gider karşılaştırması için veri
-  const comparisonData = [
-    {
-      name: "Toplam Gelir",
-      value: incomeData.reduce((sum, item) => sum + item.total, 0),
-    },
-    {
-      name: "Toplam Gider",
-      value: expenseData.reduce((sum, item) => sum + item.total, 0),
-    },
-  ];
+
+  console.log("salesData", salesData);
+
+  // Her ay için gelir ve satışları birleştir
+  const monthlySalesMap = Object.fromEntries(
+    salesData.map((item) => [item.month, item.total])
+  );
+  const monthlyIncomeMap = Object.fromEntries(
+    incomeData.map((item) => [item.month, item.total])
+  );
+
+  const mergedMonthlySummary = monthlySummary.map((item) => {
+    const sales = monthlySalesMap[item.month] || 0;
+    const income = monthlyIncomeMap[item.month] || 0;
+    const totalIncome = income + sales;
+    return {
+      ...item,
+      income: totalIncome, // Gelir + Satış
+      net: totalIncome - item.expense,
+    };
+  });
+
+  // Gelir Dağılımı için gelir ve satışları birleştir
+  const combinedIncomeData = [...incomeData, ...salesData];
+
+  console.log("incomeData", incomeData);
+  console.log("salesData", salesData);
+  console.log("expenseData", expenseData);
+  console.log("monthlySummary", monthlySummary);
+  console.log("mergedMonthlySummary", mergedMonthlySummary);
 
   return (
     <div className="space-y-8">
@@ -55,15 +79,15 @@ export default function ReportCharts({
         <h2 className="text-xl font-semibold mb-4">Aylık Kar/Zarar</h2>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlySummary}>
+            <BarChart data={mergedMonthlySummary}>
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip
-                formatter={(value: number) => [`${value.toFixed(2)} ₺`, ""]}
+                formatter={(value: number) => [`${formatNumber(value)} ₺`, ""]}
                 labelFormatter={(label: string) => `Ay: ${label}`}
               />
               <Legend />
-              <Bar dataKey="income" name="Gelir" fill="#4ade80" />
+              <Bar dataKey="income" name="Gelir + Satış" fill="#4ade80" />
               <Bar dataKey="expense" name="Gider" fill="#f87171" />
               <Bar dataKey="net" name="Net" fill="#60a5fa" />
             </BarChart>
@@ -78,7 +102,7 @@ export default function ReportCharts({
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={incomeData}
+                  data={combinedIncomeData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -92,7 +116,7 @@ export default function ReportCharts({
                     return `${name}: %${(percent * 100).toFixed(1)}`;
                   }}
                 >
-                  {incomeData.map((entry, index) => (
+                  {combinedIncomeData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -100,7 +124,10 @@ export default function ReportCharts({
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [`${value.toFixed(2)} ₺`, ""]}
+                  formatter={(value: number) => [
+                    `${formatNumber(value)} ₺`,
+                    "",
+                  ]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -135,7 +162,7 @@ export default function ReportCharts({
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [`${value.toFixed(2)} ₺`, ""]}
+                  formatter={(value: number) => [`${formatNumber(value)} ₺`, ""]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -164,23 +191,23 @@ export default function ReportCharts({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {monthlySummary.map((item) => (
+              {mergedMonthlySummary.map((item) => (
                 <tr key={item.month}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {item.month}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
-                    {item.income.toFixed(2)} ₺
+                    {formatNumber(item.income)} ₺
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">
-                    {item.expense.toFixed(2)} ₺
+                    {formatNumber(item.expense)} ₺
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                       item.net >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
-                    {item.net.toFixed(2)} ₺
+                    {formatNumber(item.net)} ₺
                   </td>
                 </tr>
               ))}

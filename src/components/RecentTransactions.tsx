@@ -1,3 +1,5 @@
+import formatNumber from "@/lib/formatNumber";
+
 interface Transaction {
   id: number;
   amount: number;
@@ -47,7 +49,7 @@ export default function RecentTransactions({
                     : "bg-red-100 text-red-800"
                 }`}
               >
-                {Number(transaction.amount).toFixed(2)} ₺
+                {formatNumber((transaction.amount))} ₺
               </span>
             </li>
           ))}
