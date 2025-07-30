@@ -18,7 +18,8 @@
     "react-dom": "19.1.0",
     "recharts": "^3.1.0",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "strong-soap": "^4.1.14"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ success: true, id: result.lastID });
   } catch (error) {
+    console.error('Kayıt hatası:', error);
     return NextResponse.json({ success: false, error: 'Kayıt başarısız' }, { status: 500 });
   }
 }
@@ -31,6 +32,7 @@ export async function DELETE(req: Request) {
     await db.run('DELETE FROM sales WHERE id = ?', [id]);
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Silme hatası:', error);
     return NextResponse.json({ success: false, error: 'Silme başarısız' }, { status: 500 });
   }
 }

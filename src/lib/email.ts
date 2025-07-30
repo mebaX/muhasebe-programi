@@ -30,7 +30,15 @@ export async function sendPaymentReminder() {
     WHERE t.type = 'expense' AND t.date = ?
   `, [dateStr]);
 
+  const incomes = await db.all(`
+    SELECT t.amount, t.date, p.name ,t.description
+    FROM transactions t
+    JOIN persons p ON t.person_id = p.id
+    WHERE t.type = 'income' AND t.date = ?
+  `, [dateStr]);
+
   if (expenses.length === 0) return;
+  if (incomes.length === 0) return;
 
   for (const recipient of recipients) {
     try {
